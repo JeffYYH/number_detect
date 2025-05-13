@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from utils import sequence_to_image
 from model import CNN
 from dataset import val_transform
+import time
 
 
 # Initialize video capture and hand detector
@@ -22,7 +23,10 @@ model.eval()
 drawing = False
 current_sequence = []
 last_digit = None
-confidence_threshold = 0.7  # Only output predictions with probability >= 0.7
+confidence_threshold = 0.4  # Only output predictions with probability >= 0.4
+tolerance_seconds = 0.2  # Tolerance for undetected hand
+undetected_start_time = None
+
 
 while True:
     success, img = cap.read()
@@ -58,6 +62,27 @@ while True:
 
         for i in range(1, len(current_sequence)):
             cv2.line(img, current_sequence[i - 1], current_sequence[i], (0, 255, 0), 2)
+    else:
+        if drawing:
+            if undetected_start_time is None:
+                undetected_start_time = time.time()
+            else:
+                elapsed_time = time.time() - undetected_start_time
+                if elapsed_time > tolerance_seconds:
+                    drawing = False
+                    if len(current_sequence) > 10:
+                        img_small = sequence_to_image(current_sequence)
+                        img_small = torch.from_numpy(img_small).float().unsqueeze(0).unsqueeze(0) / 255.0
+                        img_small = val_transform(img_small).to(device)
+                        with torch.no_grad():
+                            outputs = model(img_small)
+                            probabilities = F.softmax(outputs, dim=1)
+                            max_prob, predicted = torch.max(probabilities, 1)
+                            if max_prob.item() >= confidence_threshold:
+                                last_digit = predicted.item()
+                            else:
+                                last_digit = None
+                    undetected_start_time = None
 
     if last_digit is not None:
         cv2.putText(img, f"Digit: {last_digit}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
