@@ -13,9 +13,10 @@ cap = cv2.VideoCapture(0)
 detector = htm.FindHands(detection_con=0.75)
 
 # Load the trained model
+weight_path = 'digit_model.pth'
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = CNN().to(device)
-model.load_state_dict(torch.load('digit_model.pth'))
+model.load_state_dict(torch.load(weight_path))
 model.eval()
 
 
