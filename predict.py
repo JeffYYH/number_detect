@@ -42,26 +42,18 @@ check_dist = lambda p1, p2: abs(p1[0] - p2[0]) + abs(p1[1] - p2[1]) if p1 and p2
 def process_sequence(sequence):
     """Process the sequence in a separate thread to recognize a digit and simulate keyboard input."""
     global last_digit
-    print("checkpoint")
     img_small = sequence_to_image(sequence)
     if img_small.max() == 0:  # Skip if the image is empty
         return
     img_small = torch.from_numpy(img_small).float().unsqueeze(0).unsqueeze(0) / 255.0
-    print("checkpoint")
     img_small = val_transform(img_small).to(device)
-    print("checkpoint")
     with torch.no_grad():
-        print("checkpoint")
         outputs = model(img_small)
         probabilities = F.softmax(outputs, dim=1)
         max_prob, predicted = torch.max(probabilities, 1)
-        print("checkpoint")
         if max_prob.item() >= confidence_threshold:
             last_digit = predicted.item()
-            print("checkpoint")
             output(last_digit)
-
-            print("checkpoint")
         else:
             last_digit = None
 
@@ -89,7 +81,7 @@ def all_fingers_up(lmlist):
     return True
 
 def backspace_action(lmlist, previous_index_tip):
-    print(f"{lmlist[8][0]} - {previous_index_tip[0]}")
+    #print(f"{lmlist[8][0]} - {previous_index_tip[0]}")
     return (lmlist[8][0] - previous_index_tip[0]) > 100
 
 while True:
