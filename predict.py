@@ -2,10 +2,11 @@ import cv2
 import HandTrackingModule as htm
 import torch
 import torch.nn.functional as F
-from utils import sequence_to_image
+from utils import sequence_to_image, output
 from model import CNN
 from dataset import val_transform
 import time
+import threading
 
 
 # Initialize video capture and hand detector
@@ -28,6 +29,23 @@ confidence_threshold = 0.4  # Only output predictions with probability >= 0.4
 tolerance_seconds = 0.2  # Tolerance for undetected hand
 undetected_start_time = None
 
+def process_sequence(sequence):
+    #Process the sequence in a separate thread to recognize a digit and simulate keyboard input.
+    global last_digit, previous_digit
+    img_small = sequence_to_image(sequence)
+    if img_small.max() == 0:  # Skip if the image is empty
+        return
+    img_small = torch.from_numpy(img_small).float().unsqueeze(0).unsqueeze(0) / 255.0
+    img_small = val_transform(img_small).to(device)
+    with torch.no_grad():
+        outputs = model(img_small)
+        probabilities = F.softmax(outputs, dim=1)
+        max_prob, predicted = torch.max(probabilities, 1)
+        if max_prob.item() >= confidence_threshold:
+            last_digit = predicted.item()
+            output(last_digit)
+        else:
+            last_digit = None
 
 while True:
     success, img = cap.read()
@@ -47,17 +65,7 @@ while True:
         elif dist >= 65 and drawing:
             drawing = False
             if len(current_sequence) > 10:
-                img_small = sequence_to_image(current_sequence)
-                img_small = torch.from_numpy(img_small).float().unsqueeze(0).unsqueeze(0) / 255.0
-                img_small = val_transform(img_small).to(device)
-                with torch.no_grad():
-                    outputs = model(img_small)
-                    probabilities = F.softmax(outputs, dim=1)  # Convert logits to probabilities
-                    max_prob, predicted = torch.max(probabilities, 1)
-                    if max_prob.item() >= confidence_threshold:
-                        last_digit = predicted.item()
-                    else:
-                        last_digit = None  # Suppress output if confidence is too low
+                threading.Thread(target=process_sequence, args=(current_sequence.copy(),)).start()
         if drawing:
             current_sequence.append(index_tip)
 
@@ -72,17 +80,7 @@ while True:
                 if elapsed_time > tolerance_seconds:
                     drawing = False
                     if len(current_sequence) > 10:
-                        img_small = sequence_to_image(current_sequence)
-                        img_small = torch.from_numpy(img_small).float().unsqueeze(0).unsqueeze(0) / 255.0
-                        img_small = val_transform(img_small).to(device)
-                        with torch.no_grad():
-                            outputs = model(img_small)
-                            probabilities = F.softmax(outputs, dim=1)
-                            max_prob, predicted = torch.max(probabilities, 1)
-                            if max_prob.item() >= confidence_threshold:
-                                last_digit = predicted.item()
-                            else:
-                                last_digit = None
+                        threading.Thread(target=process_sequence, args=(current_sequence.copy(),)).start()
                     undetected_start_time = None
 
     if last_digit is not None:
