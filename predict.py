@@ -2,13 +2,12 @@ import cv2
 import HandTrackingModule as htm
 import torch
 import torch.nn.functional as F
-from utils import sequence_to_image, output
+from utils import sequence_to_image, output, backspace
 from model import CNN
 from dataset import val_transform
 import time
 import threading
 from mouse_control import mouse_control, click_control
-import numpy as np
 
 # Initialize video capture and hand detector
 cap = cv2.VideoCapture(0)
@@ -25,7 +24,7 @@ model.eval()
 drawing = False
 current_sequence = []
 last_digit = None
-confidence_threshold = 0.4  # Only output predictions with probability >= 0.4
+confidence_threshold = 0.40  # Only output predictions with probability >= 0.4
 tolerance_seconds = 0.2  # Tolerance for undetected hand
 undetected_start_time = None
 smoothed_index_tip = None  # For smoothing mouse movement
@@ -69,9 +68,24 @@ def all_fingers_up(lmlist):
             return False
     return True
 
+def all_fingers_up(lmlist):
+    """Check if all five fingers are up by comparing fingertip and MCP joint positions."""
+    if len(lmlist) != 21:
+        return False
+    finger_tips = [4, 8, 12, 16, 20]  # Thumb, Index, Middle, Ring, Little
+    finger_mcp = [2, 5, 9, 13, 17]    # MCP joints for each finger
+    for tip, mcp in zip(finger_tips, finger_mcp):
+        if lmlist[tip][1] >= lmlist[mcp][1]:  # If fingertip is not above MCP joint
+            return False
+    return True
+
+def backspace_action(lmlist, previous_index_tip):
+    #print(f"{lmlist[8][0]} - {previous_index_tip[0]}")
+    return (lmlist[8][0] - previous_index_tip[0]) > 80
+
 while True:
-    success, img = cap.read()
-    if not success:
+    sucesses, img = cap.read()
+    if not sucesses:
         break
 
     lmlist = detector.getPosition(img, list(range(21)), draw=True)
@@ -121,20 +135,28 @@ while True:
 
         elif current_mode == "Writing":
             # Writing mode: handle digit drawing and recognition
-            if dist < 20 and not drawing:  # Start drawing when thumb and index are close
+            if dist < 15 and not drawing:  # Start drawing when thumb and index are close
                 drawing = True
                 current_sequence = []
                 print("Started drawing")
             elif dist >= 60 and drawing:  # Stop drawing when thumb and index are far apart
                 drawing = False
-                if len(current_sequence) > 10:  # Process sequence if long enough
-                    threading.Thread(target=process_sequence, args=(current_sequence.copy(),)).start()
+                if len(current_sequence) > 10:  # Process sequence if long enou
                     print("Stopped drawing, processing sequence")
+                    threading.Thread(target=process_sequence, args=(current_sequence.copy(),)).start()
             if drawing:
                 current_sequence.append(index_tip)  # Add point to drawing sequence
+            else:
+                # Check if you are doing the backs
+                if backspace_action(lmlist, previous_index_tip):
+                    # Perform backspace action
+                    print("Backspace detected")
+                    # Add your backspace action here
+                    backspace()
+                previous_index_tip = index_tip  # Update previous index tip position
 
             # Switch back to Mouse mode if all fingers are up
-            if all_fingers_up(lmlist) and dist >= 60:
+            if all_fingers_up(lmlist) and dist >= 80:
                 current_mode = "Mouse"
                 mouse_control_state = "Mouse"
                 mouse_control_timestamp = time.time()

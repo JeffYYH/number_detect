@@ -13,8 +13,8 @@ def mouse_control(pos, screen_size):
     screen_width, screen_height = pyautogui.size()
 
     # Normalize the index finger tip position to screen coordinates
-    x = int(((1 - pos[0]  / screen_size[1]) * 1.5 - 0.22) * screen_width)
-    y = int((pos[1]  / screen_size[0] * 1.5 - 0.22) * screen_height)
+    x = int(((1 - pos[0]  / screen_size[1]) * 1.5 - 0.23) * screen_width)
+    y = int((pos[1]  / screen_size[0] * 1.5 - 0.23 )* screen_height)
 
     pyautogui.moveTo(x, y)
 
