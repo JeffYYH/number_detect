@@ -1,40 +1,11 @@
 import cv2
 import HandTrackingModule as htm
-import torch.nn as nn
-import numpy as np
 import torch
 import torch.nn.functional as F
-from torchvision import transforms
 from utils import sequence_to_image
+from model import CNN
+from dataset import val_transform
 
-# Define the CNN model
-class CNN(nn.Module):
-    def __init__(self):
-        super(CNN, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, kernel_size=3, padding=1)
-        self.bn1 = nn.BatchNorm2d(32)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
-        self.bn2 = nn.BatchNorm2d(64)
-        self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
-        self.bn3 = nn.BatchNorm2d(128)
-        self.pool = nn.MaxPool2d(2)
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(0.4)
-        self.fc1 = nn.Linear(128 * 3 * 3, 128)  # Adjusted for 28x28 input after 3 max-pooling
-        self.fc2 = nn.Linear(128, 10)  # 10 classes: 0-9
-
-    def forward(self, x):
-        x = self.relu(self.bn1(self.conv1(x)))
-        x = self.pool(x)
-        x = self.relu(self.bn2(self.conv2(x)))
-        x = self.pool(x)
-        x = self.relu(self.bn3(self.conv3(x)))
-        x = self.pool(x)
-        x = x.view(-1, 128 * 3 * 3)
-        x = self.relu(self.fc1(x))
-        x = self.dropout(x)
-        x = self.fc2(x)
-        return x
 
 # Initialize video capture and hand detector
 cap = cv2.VideoCapture(0)
@@ -46,10 +17,6 @@ model = CNN().to(device)
 model.load_state_dict(torch.load('digit_model.pth'))
 model.eval()
 
-# Define transform
-transform = transforms.Compose([
-    transforms.Normalize((0.5,), (0.5,))
-])
 
 # Variables for drawing and prediction
 drawing = False
@@ -77,7 +44,7 @@ while True:
             if len(current_sequence) > 10:
                 img_small = sequence_to_image(current_sequence)
                 img_small = torch.from_numpy(img_small).float().unsqueeze(0).unsqueeze(0) / 255.0
-                img_small = transform(img_small).to(device)
+                img_small = val_transform(img_small).to(device)
                 with torch.no_grad():
                     outputs = model(img_small)
                     probabilities = F.softmax(outputs, dim=1)  # Convert logits to probabilities
