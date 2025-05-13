@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from pynput.keyboard import Controller
 
 def normalize_sequence(seq): #normalize the data in arraay
     if len(seq) < 2:
@@ -30,3 +31,8 @@ def sequence_to_image(seq, size=28):
     for i in range(1, len(points)):
         cv2.line(img, points[i - 1], points[i], 255, 1)
     return img
+
+def output(digit):
+    keyboard = Controller()
+    keyboard.press(str(digit))
+    keyboard.release(str(digit))
