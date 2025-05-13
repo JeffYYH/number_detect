@@ -11,14 +11,24 @@ os.makedirs(os.path.join(dataset_dir, 'non'), exist_ok=True)
 
 # Initialize video capture and hand detector
 cap = cv2.VideoCapture(0)
-detector = htm.FindHands(detection_con=0.75)
+detector = htm.FindHands(detection_con=0.7)
 
 # Initialize variables
 current_label = None
 drawing = False
 current_sequence = []
+# counters: f"{0-9}" for 0-9
 counters = {str(i): 0 for i in range(10)}
 counters['non'] = 0
+
+for label in range(10):
+    label_dir = os.path.join(dataset_dir, str(label))
+    if not os.path.exists(label_dir):
+        continue
+    file_dir_s = os.listdir(label_dir)
+    if len(file_dir_s) != 0:
+        print(f"Label {label}: {len(file_dir_s)} samples")
+        counters[str(label)] = len(file_dir_s) + 1
 
 while True:
     success, img = cap.read()
@@ -36,9 +46,10 @@ while True:
         if dist < 20 and not drawing:
             drawing = True
             current_sequence = []
-        elif dist >= 65 and drawing:
+        elif dist >= 55 and drawing:
             drawing = False
             if current_label is not None and len(current_sequence) > 10:
+                
                 img_small = sequence_to_image(current_sequence)
                 filename = os.path.join(dataset_dir, current_label, f"{current_label}_{counters[current_label]}.png")
                 cv2.imwrite(filename, img_small)
