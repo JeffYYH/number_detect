@@ -7,6 +7,7 @@ from model import CNN
 from dataset import val_transform
 import time
 import threading
+from mouse_control import mouse_control, click_control
 
 
 # Initialize video capture and hand detector
@@ -28,6 +29,13 @@ last_digit = None
 confidence_threshold = 0.4  # Only output predictions with probability >= 0.4
 tolerance_seconds = 0.2  # Tolerance for undetected hand
 undetected_start_time = None
+mouse_control_state = "Mouse"
+mouse_control_timestamp = None
+previous_index_tip = None
+
+
+# Function to process the sequence and recognize the digit
+check_dist = lambda p1, p2: abs(p1[0] - p2[0]) + abs(p1[1] - p2[1]) if p1 and p2 else 999
 
 def process_sequence(sequence):
     #Process the sequence in a separate thread to recognize a digit and simulate keyboard input.
@@ -66,8 +74,36 @@ while True:
             drawing = False
             if len(current_sequence) > 10:
                 threading.Thread(target=process_sequence, args=(current_sequence.copy(),)).start()
+            else:
+                click_control(index_tip, img.shape)
         if drawing:
             current_sequence.append(index_tip)
+        else:
+            if mouse_control_state == "Mouse":
+                mouse_control(index_tip, img.shape)
+                if (check_dist(previous_index_tip, index_tip) < 20):
+                    # Not moving the mouse
+                    if (time.time() - mouse_control_timestamp) > 0.2:
+                        # Not moving for 0.4 seconds
+                        mouse_control_state = "Stall"
+                        mouse_control_timestamp = time.time()
+                else:
+                    # Moving the mouse
+                    mouse_control_timestamp = time.time()
+                previous_index_tip = index_tip
+
+            if mouse_control_state == "Stall":
+                if (check_dist(previous_index_tip, index_tip) > 20):
+                    # Moving the mouse
+                    if (time.time() - mouse_control_timestamp) > 0.1:
+                        # Moving for 0.4 seconds
+                        mouse_control_state = "Mouse"
+                        mouse_control_timestamp = time.time()
+                else:
+                    # Not moving the mouse
+                    mouse_control_timestamp = time.time()
+
+            
 
         for i in range(1, len(current_sequence)):
             cv2.line(img, current_sequence[i - 1], current_sequence[i], (0, 255, 0), 2)
@@ -81,7 +117,7 @@ while True:
                     drawing = False
                     if len(current_sequence) > 10:
                         threading.Thread(target=process_sequence, args=(current_sequence.copy(),)).start()
-                    undetected_start_time = None
+                    undetected_start_time = None            
 
     if last_digit is not None:
         cv2.putText(img, f"Digit: {last_digit}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
