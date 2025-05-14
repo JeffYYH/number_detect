@@ -36,3 +36,8 @@ def output(digit):
     keyboard = Controller()
     keyboard.press(str(digit))
     keyboard.release(str(digit))
+
+def backspace():
+    keyboard = Controller()
+    keyboard.press('\b')
+    keyboard.release('\b')

@@ -36,6 +36,7 @@ best_val_acc = 0.0
 patience = 10
 counter = 0
 
+
 # Outside progress bar: indicates the overall training process
 epoch_progress = tqdm(range(num_epochs), desc="Training Epochs", position=0)
 
@@ -46,7 +47,9 @@ for epoch in epoch_progress:
     correct = 0
     total = 0
     
+
     # inner progress bar: indicates the current epoch's training batch
+
     train_progress = tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs} [Train]", 
                             position=1, leave=False)
     for inputs, labels in train_progress:
@@ -62,20 +65,25 @@ for epoch in epoch_progress:
         total += labels.size(0)
         correct += (predicted == labels).sum().item()
         
+
         # update progress bar information
+
         train_acc = correct / total
         train_progress.set_postfix({"loss": f"{train_loss/total:.4f}", "acc": f"{train_acc:.4f}"})
     
     train_loss = train_loss / len(train_loader.dataset)
     train_accuracy = correct / total
     
+
     # validation phase
+
     model.eval()
     val_loss = 0.0
     correct = 0
     total = 0
     
     # inner progress bar: indicates the current epoch's validation batch
+
     val_progress = tqdm(val_loader, desc=f"Epoch {epoch+1}/{num_epochs} [Val]", 
                         position=1, leave=False)
     with torch.no_grad():
@@ -89,14 +97,18 @@ for epoch in epoch_progress:
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
             
+
             # update progress bar information
+
             val_acc = correct / total
             val_progress.set_postfix({"loss": f"{val_loss/total:.4f}", "acc": f"{val_acc:.4f}"})
     
     val_loss = val_loss / len(val_loader.dataset)
     val_accuracy = correct / total
     
+
     # update the outer progress bar with training and validation metrics
+
     epoch_progress.set_postfix({
         "train_loss": f"{train_loss:.4f}", 
         "train_acc": f"{train_accuracy:.4f}",
@@ -104,10 +116,12 @@ for epoch in epoch_progress:
         "val_acc": f"{val_accuracy:.4f}"
     })
     
+
     # learning rate scheduler
     scheduler.step(val_loss)
     
     # early stopping
+
     if val_accuracy > best_val_acc:
         best_val_acc = val_accuracy
         torch.save(model.state_dict(), 'digit_model.pth')

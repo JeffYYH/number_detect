@@ -1,13 +1,10 @@
-# Python 编译文件
+
 __pycache__/
 
-# 模型权重文件（如果不需要版本控制）
 *.pth
 
-# 日志文件
 *.log
 
-# 环境配置
 .env
 venv/
 env/
