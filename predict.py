@@ -24,11 +24,11 @@ model.eval()
 drawing = False
 current_sequence = []
 last_digit = None
-confidence_threshold = 0.40  # Only output predictions with probability >= 0.4
-tolerance_seconds = 0.2  # Tolerance for undetected hand
+confidence_threshold = 0.4  # Only output predictions with probability >= 0.4
+tolerance_seconds = 0.25  # Tolerance for undetected hand
 undetected_start_time = None
 smoothed_index_tip = None  # For smoothing mouse movement
-alpha = 0.7  # Smoothing factor for mouse movement
+alpha = 0.9  # Smoothing factor for mouse movement
 current_mode = "Mouse"  # Start in Mouse mode ("Mouse" or "Writing")
 mouse_control_state = "Mouse"  # Mouse state ("Mouse" or "Stall")
 mouse_control_timestamp = None  # Timestamp for mouse state transitions
@@ -108,20 +108,20 @@ while True:
             # Mouse control mode: handle mouse movement, stalling, and clicking
             if mouse_control_state == "Mouse":
                 mouse_control(smoothed_index_tip, img.shape)  # Move mouse with smoothed position
-                if check_dist(previous_index_tip, index_tip) < 10:  # Detect if finger is stationary
-                    if mouse_control_timestamp and time.time() - mouse_control_timestamp > 0.33:
+                if check_dist(previous_index_tip, index_tip) < 12:  # Detect if finger is stationary
+                    if mouse_control_timestamp and time.time() - mouse_control_timestamp > 0.2:
                         mouse_control_state = "Stall"  # Switch to Stall mode
-                        print("Mouse stalled")
+                        #print("Mouse stalled")
                 else:
                     mouse_control_timestamp = time.time()  # Update timestamp if moving
                 previous_index_tip = index_tip
 
             elif mouse_control_state == "Stall":
-                if check_dist(previous_index_tip, index_tip) > 10:  # Detect movement to resume
-                    if time.time() - mouse_control_timestamp > 0.33:
+                if check_dist(previous_index_tip, index_tip) > 12:  # Detect movement to resume
+                    if time.time() - mouse_control_timestamp > 0.2:
                         mouse_control_state = "Mouse"
                         mouse_control_timestamp = time.time()
-                        print("Mouse resumed")
+                        #print("Mouse resumed")
                 else:
                     mouse_control_timestamp = time.time()
 
@@ -131,18 +131,18 @@ while True:
                 current_mode = "Writing"  # Switch to Writing mode
                 drawing = False  # Reset drawing state
                 time.sleep(0.1)
-                print("Click detected, switching to Writing mode")
+                #print("Click detected, switching to Writing mode")
 
         elif current_mode == "Writing":
             # Writing mode: handle digit drawing and recognition
             if dist < 15 and not drawing:  # Start drawing when thumb and index are close
                 drawing = True
                 current_sequence = []
-                print("Started drawing")
-            elif dist >= 60 and drawing:  # Stop drawing when thumb and index are far apart
+                #print("Started drawing")
+            elif dist >= 55 and drawing:  # Stop drawing when thumb and index are far apart
                 drawing = False
                 if len(current_sequence) > 10:  # Process sequence if long enou
-                    print("Stopped drawing, processing sequence")
+                    #print("Stopped drawing, processing sequence")
                     threading.Thread(target=process_sequence, args=(current_sequence.copy(),)).start()
             if drawing:
                 current_sequence.append(index_tip)  # Add point to drawing sequence
@@ -150,7 +150,7 @@ while True:
                 # Check if you are doing the backs
                 if backspace_action(lmlist, previous_index_tip):
                     # Perform backspace action
-                    print("Backspace detected")
+                    #print("Backspace detected")
                     # Add your backspace action here
                     backspace()
                 previous_index_tip = index_tip  # Update previous index tip position
@@ -162,8 +162,7 @@ while True:
                 mouse_control_timestamp = time.time()
                 drawing = False
                 current_sequence = []
-                print("Open palm detected, switching to Mouse mode")
-
+                #print("Open palm detected, switching to Mouse mode"
         # Draw the writing sequence on the screen
         for i in range(1, len(current_sequence)):
             cv2.line(img, current_sequence[i - 1], current_sequence[i], (0, 255, 0), 2)
@@ -178,7 +177,7 @@ while True:
                     drawing = False
                     if len(current_sequence) > 10:
                         threading.Thread(target=process_sequence, args=(current_sequence.copy(),)).start()
-                        print("Stopped drawing due to hand loss, processing sequence")
+                        #print("Stopped drawing due to hand loss, processing sequence")
                     undetected_start_time = None
 
     # Display the last recognized digit and current mode
@@ -189,6 +188,5 @@ while True:
     cv2.imshow("Image", img)
     if cv2.waitKey(1) == ord('q'):
         break
-
 cap.release()
 cv2.destroyAllWindows()
